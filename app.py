@@ -100,7 +100,7 @@ def main():
     gr.Interface(
         func,
         [
-            gr.inputs.Number(default=0, label='Seed'),
+            gr.inputs.Number(default=55376, label='Seed'),
             gr.inputs.Slider(
                 0, 2, step=0.05, default=0.7, label='Truncation psi'),
             gr.inputs.Checkbox(default=False, label='Randomize Noise'),
