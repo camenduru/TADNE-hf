@@ -87,8 +87,6 @@ def generate_image(seed: int, truncation_psi: float, randomize_noise: bool,
 
 
 def main():
-    gr.close_all()
-
     args = parse_args()
     device = torch.device(args.device)
 
