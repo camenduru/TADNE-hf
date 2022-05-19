@@ -24,6 +24,14 @@ from model import Generator
 TITLE = 'TADNE (This Anime Does Not Exist)'
 DESCRIPTION = '''The original TADNE site is https://thisanimedoesnotexist.ai/.
 The model used here is the one converted from the model provided in [this site](https://www.gwern.net/Faces) using [this repo](https://github.com/rosinality/stylegan2-pytorch).
+
+Expected execution time on Hugging Face Spaces: 4s
+
+Related Apps:
+- [TADNE Image Viewer](https://huggingface.co/spaces/hysts/TADNE-image-viewer)
+- [TADNE Image Selector](https://huggingface.co/spaces/hysts/TADNE-image-selector)
+- [TADNE Interpolation](https://huggingface.co/spaces/hysts/TADNE-interpolation)
+- [TADNE Image Search with DeepDanbooru](https://huggingface.co/spaces/hysts/TADNE-image-search-with-DeepDanbooru)
 '''
 SAMPLE_IMAGE_DIR = 'https://huggingface.co/spaces/hysts/TADNE/resolve/main/samples'
 ARTICLE = f'''## Generated images
@@ -31,6 +39,8 @@ ARTICLE = f'''## Generated images
 - truncation: 0.7
 - seed: 0-99
 ![samples]({SAMPLE_IMAGE_DIR}/sample.jpg)
+
+<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.tadne" alt="visitor badge"/></center>
 '''
 
 TOKEN = os.environ['TOKEN']
