@@ -23,7 +23,6 @@ from model import Generator
 
 TITLE = 'TADNE (This Anime Does Not Exist)'
 DESCRIPTION = '''The original TADNE site is https://thisanimedoesnotexist.ai/.
-The model used here is the one converted from the model provided in [this site](https://www.gwern.net/Faces) using [this repo](https://github.com/rosinality/stylegan2-pytorch).
 
 Expected execution time on Hugging Face Spaces: 4s
 
