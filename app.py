@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import argparse
 import functools
 import os
+import random
+import shlex
 import subprocess
 import sys
 
@@ -16,16 +17,20 @@ from huggingface_hub import hf_hub_download
 
 if os.environ.get('SYSTEM') == 'spaces':
     with open('patch') as f:
-        subprocess.run('patch -p1'.split(), cwd='stylegan2-pytorch', stdin=f)
+        subprocess.run(shlex.split('patch -p1'),
+                       cwd='stylegan2-pytorch',
+                       stdin=f)
+    if not torch.cuda.is_available():
+        with open('patch-cpu') as f:
+            subprocess.run(shlex.split('patch -p1'),
+                           cwd='stylegan2-pytorch',
+                           stdin=f)
 
 sys.path.insert(0, 'stylegan2-pytorch')
 
 from model import Generator
 
-TITLE = 'TADNE (This Anime Does Not Exist)'
-DESCRIPTION = '''The original TADNE site is https://thisanimedoesnotexist.ai/.
-
-Expected execution time on Hugging Face Spaces: 4s
+DESCRIPTION = '''# [TADNE](https://thisanimedoesnotexist.ai/) (This Anime Does Not Exist)
 
 Related Apps:
 - [TADNE Image Viewer](https://huggingface.co/spaces/hysts/TADNE-image-viewer)
@@ -39,28 +44,20 @@ ARTICLE = f'''## Generated images
 - truncation: 0.7
 - seed: 0-99
 ![samples]({SAMPLE_IMAGE_DIR}/sample.jpg)
-
-<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.tadne" alt="visitor badge"/></center>
 '''
 
+MAX_SEED = np.iinfo(np.int32).max
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cpu')
-    parser.add_argument('--theme', type=str)
-    parser.add_argument('--live', action='store_true')
-    parser.add_argument('--share', action='store_true')
-    parser.add_argument('--port', type=int)
-    parser.add_argument('--disable-queue',
-                        dest='enable_queue',
-                        action='store_false')
-    parser.add_argument('--allow-flagging', type=str, default='never')
-    return parser.parse_args()
+
+def randomize_seed_fn(seed: int, randomize_seed: bool) -> int:
+    if randomize_seed:
+        seed = random.randint(0, MAX_SEED)
+    return seed
 
 
 def load_model(device: torch.device) -> nn.Module:
     model = Generator(512, 1024, 4, channel_multiplier=2)
-    path = hf_hub_download('hysts/TADNE',
+    path = hf_hub_download('public-data/TADNE',
                            'models/aydao-anime-danbooru2019s-512-5268480.pt')
     checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['g_ema'])
@@ -92,36 +89,41 @@ def generate_image(seed: int, truncation_psi: float, randomize_noise: bool,
     return out[0].cpu().numpy()
 
 
-def main():
-    args = parse_args()
-    device = torch.device(args.device)
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+model = load_model(device)
+fn = functools.partial(generate_image, model=model, device=device)
 
-    model = load_model(device)
+with gr.Blocks(css='style.css') as demo:
+    gr.Markdown(DESCRIPTION)
+    with gr.Row():
+        with gr.Column():
+            seed = gr.Slider(label='Seed',
+                             minimum=0,
+                             maximum=MAX_SEED,
+                             step=1,
+                             value=0)
+            randomize_seed = gr.Checkbox(label='Randomize seed', value=True)
+            psi = gr.Slider(label='Truncation psi',
+                            minimum=0,
+                            maximum=2,
+                            step=0.05,
+                            value=0.7)
+            randomize_noise = gr.Checkbox(label='Randomize Noise', value=False)
+            run_button = gr.Button('Run')
+        with gr.Column():
+            result = gr.Image(label='Output')
+    gr.Markdown(ARTICLE)
 
-    func = functools.partial(generate_image, model=model, device=device)
-    func = functools.update_wrapper(func, generate_image)
-
-    gr.Interface(
-        func,
-        [
-            gr.inputs.Number(default=55376, label='Seed'),
-            gr.inputs.Slider(
-                0, 2, step=0.05, default=0.7, label='Truncation psi'),
-            gr.inputs.Checkbox(default=False, label='Randomize Noise'),
-        ],
-        gr.outputs.Image(type='numpy', label='Output'),
-        title=TITLE,
-        description=DESCRIPTION,
-        article=ARTICLE,
-        theme=args.theme,
-        allow_flagging=args.allow_flagging,
-        live=args.live,
-    ).launch(
-        enable_queue=args.enable_queue,
-        server_port=args.port,
-        share=args.share,
+    run_button.click(
+        fn=randomize_seed_fn,
+        inputs=[seed, randomize_seed],
+        outputs=seed,
+        queue=False,
+        api_name=False,
+    ).then(
+        fn=fn,
+        inputs=[seed, psi, randomize_noise],
+        outputs=result,
+        api_name='run',
     )
-
-
-if __name__ == '__main__':
-    main()
+demo.queue(max_size=10).launch()
